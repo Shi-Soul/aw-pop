@@ -1,0 +1,12 @@
+aw-client
+
+datetime
+
+toolz
+fn.py
+
+pystray
+tkinter
+PIL
+requests
+

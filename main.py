@@ -147,37 +147,42 @@ class Monitor:
     def loop(self):
         # haspop=False
         while True:
-            print("sleep: ",self.config['check_interval'])
             time.sleep(self.config['check_interval'])
             
             mon_ret = self.cat_ratio(self.config['monitor_interval'])
             
-            if mon_ret is not None:
-                logging.info(f"Current indicator value: {mon_ret}")
-                dur, catratio = mon_ret
-                indicator_value = self._check_conses(self.config['constraint'],catratio)
-                
-                if not all(indicator_value):
-                    
-                    loc_tree = self.cat_ratio(self.config['check_interval']/60)[1]
-                    
-                    loc_satisfy = self._check_conses(self.config['constraint'],loc_tree)
-                    
-                    if loc_tree.isempty() or all(loc_satisfy):
-                        continue
-                    
-                    fail_cons = list(
-                        compress(self.config['constraint'],
-                                 map(operator.not_,indicator_value)) #type:ignore
-                        )
-                    
-                    warning_str = f"Constraint not met!! \n{fail_cons}"
-                    # if not haspop:
-                    self._minimize_desktop()
-                    self._show_popup(warning_str)
-                    logging.warning(warning_str)
-            else:
+            if mon_ret is None:
                 logging.warning("Failed to get indicator value")
+                continue
+            
+            logging.info(f"Current indicator value: {mon_ret}")
+            dur, catratio = mon_ret
+            indicator_value = self._check_conses(self.config['constraint'],catratio)
+            
+            if all(indicator_value):
+                continue
+            
+            
+            # check if the constraint is still not met in the local time period
+            
+            loc_tree = self.cat_ratio(self.config['check_interval']/60)[1]
+            
+            loc_satisfy = self._check_conses(self.config['constraint'],loc_tree)
+            
+            # If in a small local time period, the time allocation is satisfiable, then we regard it as a false alarm
+            if loc_tree.isempty() or all(loc_satisfy):
+                continue
+            
+            fail_cons = list(
+                compress(self.config['constraint'],
+                            map(operator.not_,indicator_value)) #type:ignore
+                )
+            
+            warning_str = f"Constraint not met!! \n{fail_cons}"
+            
+            self._minimize_desktop()
+            self._show_popup(warning_str)
+            logging.warning(warning_str)
             
 
 

@@ -1,7 +1,6 @@
 {
     "monitor_interval": 100, 
     "check_interval": 5, 
-    "threshold": 100,
     "constraint":
     [
         {

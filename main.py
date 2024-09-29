@@ -16,7 +16,8 @@ from aw_transform import flood
 from typing import List
 from fn import F
 import operator
-
+import win32gui
+import win32api
 import aw_client 
 from aw_client import queries
 import socket
@@ -66,9 +67,11 @@ class Monitor:
         self.tkroot.mainloop()
 
     def setup_icontray(self):
-        image = Image.new('RGB', (64, 64), color = (0, 0, 0))
+        
+        # read from a .ico file
+        image = Image.open(r"icon6.ico")
         dc = ImageDraw.Draw(image)
-        dc.ellipse((0, 0, 64, 64), fill = (0, 255, 0))
+        dc.ellipse((0, 0, 64, 64), fill = (80, 240, 80))
         menu = pystray.Menu(
             pystray.MenuItem("Exit", self.exit_action)
         )

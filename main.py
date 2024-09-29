@@ -26,8 +26,7 @@ from treetype import TreeType
 
 CAT_PATH = r"%USERPROFILE%\AppData\Local\activitywatch\activitywatch\aw-server\settings.json".replace('%USERPROFILE%', os.environ['USERPROFILE'])
 
-td1d = timedelta(days=1)
-day_offset = timedelta(hours=4)
+
 
 
 def read_config(file_path):
@@ -37,7 +36,6 @@ def read_config(file_path):
     except Exception as e:
         logging.error(f"Error reading config file: {e}")
         sys.exit(1)
-
 
 class Monitor:
     def __init__(self, config_path='config.json'):
@@ -73,7 +71,7 @@ class Monitor:
         menu = pystray.Menu(
             pystray.MenuItem("Exit", self.exit_action)
         )
-        self.icon = pystray.Icon("monitor", image, "Monitor Program", menu)
+        self.icon = pystray.Icon("monitor", image, "aw-pop Monitor Program", menu)
         
     def exit_action(self):
         self.icon.stop()

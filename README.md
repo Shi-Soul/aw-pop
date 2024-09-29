@@ -12,9 +12,9 @@ Currently only works on Windows.
 
 
 # Usage
-Just change `config.json`, and run `main.py`. There will be a icon tray in the system tray.
+Just change `config.json`, and run `main.py`. There will be a icon tray in the system tray, you can exit the program by right clicking the icon.
 
-To run as a background service, you can add `start pythonw.exe main.py` to your startup programs, see `run_bg.bat`.
+To run as a background service or startup program, you can use `start pythonw.exe main.py`, see `run_bg.bat`. Make sure you use the correct python interpreter.
 
 
 # Config file

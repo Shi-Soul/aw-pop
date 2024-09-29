@@ -1,6 +1,7 @@
 
 build
 dist
+logs
 get_ratio.ipynb
 
 *.pyc

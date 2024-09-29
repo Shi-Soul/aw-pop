@@ -39,7 +39,8 @@ def read_config(file_path):
 
 class Monitor:
     def __init__(self, config_path='config.json'):
-        logging.basicConfig(filename='monitor.log', level=logging.INFO, 
+        if not os.path.exists('logs'): os.makedirs('logs')
+        logging.basicConfig(filename=f'logs/monitor_{datetime.now().strftime("%Y-%m-%d-%H")}.log', level=logging.INFO, 
                             format='%(asctime)s - %(levelname)s - %(message)s')
         self.config = read_config(config_path)
         self.catconfig = list(map(lambda x: (x["name"], x["rule"]),read_config(CAT_PATH)['classes'])) #type:ignore
@@ -153,10 +154,10 @@ class Monitor:
                 logging.warning("Failed to get indicator value")
                 continue
             
-            logging.info(f"Current indicator value: {mon_ret}")
             dur, catratio = mon_ret
             indicator_value = self._check_conses(self.config['constraint'],catratio)
             
+            logging.info(f"Current Status: \n{mon_ret} \n{indicator_value}")
             if all(indicator_value):
                 continue
             

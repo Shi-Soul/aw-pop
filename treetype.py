@@ -30,8 +30,8 @@ class TreeType(dict):
                 carry[path[-1]] = value
         return expanded_tree
 
-    def get_term(self, term):
-        return reduce(lambda acc, y: acc[y], term, self)
+    def get_term(self, term)->"TreeType":
+        return reduce(lambda acc, y: acc[y], term, self) # type: ignore
 
     def reduce(self, f, init):
         if not isinstance(self, TreeType):

@@ -23,6 +23,7 @@ from aw_client import queries
 import socket
 from datetime import datetime, timedelta
 
+import pprint
 from treetype import TreeType
 
 
@@ -48,7 +49,9 @@ class Monitor:
 
         self.aw = aw_client.ActivityWatchClient()
         self.catconfig = list(
-            map(lambda x: (x["name"], x["rule"]), self.aw.get_setting("classes"))  # type:ignore
+            map(
+                lambda x: (x["name"], x["rule"]), self.aw.get_setting("classes")
+            )  # type:ignore
         )
 
         self.icon: pystray.Icon  # type: ignore
@@ -78,7 +81,7 @@ class Monitor:
         dc = ImageDraw.Draw(image)
         dc.ellipse((0, 0, 64, 64), fill=(80, 240, 80))
         menu = pystray.Menu(pystray.MenuItem("Exit", self.exit_action))
-        self.icon = pystray.Icon("monitor", image, "aw-pop Monitor Program", menu)
+        self.icon = pystray.Icon("monitor", image, "aw-pop", menu)
 
     def exit_action(self):
         self.icon.stop()
@@ -99,8 +102,12 @@ class Monitor:
                 classes=self.catconfig,
             )
         )
-        reseq_query = list(map(lambda x: x.replace(" ", ""), 
-                                query_body.split(";")))  # type: ignore
+        reseq_query = list(
+            map(# type: ignore
+                lambda x: x.replace(" ", ""), 
+                query_body.split(";")
+                )
+        )  
         reseq_query.insert(-3, "events = union_no_overlap(browser_events,events)")
         query_body = ";\n".join(reseq_query)
 
@@ -185,16 +192,27 @@ class Monitor:
 
             # If in a small local time period, the time allocation is satisfiable, then we regard it as a false alarm
             if loc_tree.isempty() or all(loc_satisfy):
+                # print(f"DEBUG: {loc_tree.isempty()=}, {all(loc_satisfy)=}")
+                # print(f"DEBUG: {loc_tree=}")
                 continue
 
             fail_cons = list(
                 compress(
-                    self.config["constraint"], 
-                    map(operator.not_, indicator_value) # type:ignore
-                )  
+                    self.config["constraint"],
+                    map(operator.not_, indicator_value),  # type:ignore
+                )
             )
 
-            warning_str = f"Constraint not meet!! \n{fail_cons}"
+            fail_term = list(
+                map( # type: ignore
+                    lambda x: (x["term"], catratio.get_term(x["term"]).sum()), fail_cons
+                )
+            )
+
+            warning_str = (
+                f"Constraint not meet!! \nFail Conses: {fail_cons}\n"
+                + f"Fail Terms: {fail_term}"
+            )
 
             self._minimize_desktop()
             self._show_popup(warning_str)

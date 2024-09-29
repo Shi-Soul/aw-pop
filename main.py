@@ -25,9 +25,6 @@ from datetime import datetime, timedelta
 
 from treetype import TreeType
 
-CAT_PATH = r"%USERPROFILE%\AppData\Local\activitywatch\activitywatch\aw-server\settings.json".replace('%USERPROFILE%', os.environ['USERPROFILE'])
-
-
 
 
 def read_config(file_path):
@@ -44,8 +41,11 @@ class Monitor:
         logging.basicConfig(filename=f'logs/monitor_{datetime.now().strftime("%Y-%m-%d-%H")}.log', level=logging.INFO, 
                             format='%(asctime)s - %(levelname)s - %(message)s')
         self.config = read_config(config_path)
-        self.catconfig = list(map(lambda x: (x["name"], x["rule"]),read_config(CAT_PATH)['classes'])) #type:ignore
+        
         self.aw = aw_client.ActivityWatchClient()
+        self.catconfig = list(map(lambda x: (x["name"], x["rule"]),self.aw.get_setting("classes"))) #type:ignore
+
+        
         self.icon:pystray.Icon
         self.setup_icontray()
         
@@ -86,20 +86,24 @@ class Monitor:
     def query_events(self,interval:int):
         hostname = socket.gethostname()
         
-        canonicalQuery = queries.canonicalEvents(
+        query_body = queries.canonicalEvents(
             queries.DesktopQueryParams(
                 bid_window=f"aw-watcher-window_{hostname}",
                 bid_afk=f"aw-watcher-afk_{hostname}",
+                bid_browsers=[f"aw-watcher-web-edge",],
                 classes=self.catconfig,
             )
         )
+        reseq_query = list(map(lambda x:x.replace(' ',''),query_body.split(';')))
+        reseq_query.insert(-3,
+                    "events = union_no_overlap(browser_events,events)")
+        query_body = ";\n".join(reseq_query)
 
         query = f"""
-        {canonicalQuery}
+        {query_body}
         duration = sum_durations(events);
         RETURN = {{"events": events, "duration": duration}};
         """
-
 
         now = datetime.now().astimezone()
         
@@ -112,6 +116,7 @@ class Monitor:
         dur = res['duration']
         events = res['events']
         
+        # logging.info(f"DEBUG: {events[:5]=}")
         cats = ( F()
             << reduceby(lambda x: x['data']['$category'].__repr__(), 
                 lambda acc,x: acc+x['duration'].total_seconds(), 
@@ -180,7 +185,7 @@ class Monitor:
                             map(operator.not_,indicator_value)) #type:ignore
                 )
             
-            warning_str = f"Constraint not met!! \n{fail_cons}"
+            warning_str = f"Constraint not meet!! \n{fail_cons}"
             
             self._minimize_desktop()
             self._show_popup(warning_str)

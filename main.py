@@ -48,10 +48,10 @@ class Monitor:
 
         self.aw = aw_client.ActivityWatchClient()
         self.catconfig = list(
-            map(lambda x: (x["name"], x["rule"]), self.aw.get_setting("classes"))
-        )  # type:ignore
+            map(lambda x: (x["name"], x["rule"]), self.aw.get_setting("classes"))  # type:ignore
+        )
 
-        self.icon: pystray.Icon
+        self.icon: pystray.Icon  # type: ignore
         self.setup_icontray()
 
         threading.Thread(target=self.setup_tk, daemon=True).start()
@@ -99,7 +99,8 @@ class Monitor:
                 classes=self.catconfig,
             )
         )
-        reseq_query = list(map(lambda x: x.replace(" ", ""), query_body.split(";")))
+        reseq_query = list(map(lambda x: x.replace(" ", ""), 
+                                query_body.split(";")))  # type: ignore
         reseq_query.insert(-3, "events = union_no_overlap(browser_events,events)")
         query_body = ";\n".join(reseq_query)
 
@@ -188,8 +189,9 @@ class Monitor:
 
             fail_cons = list(
                 compress(
-                    self.config["constraint"], map(operator.not_, indicator_value)
-                )  # type:ignore
+                    self.config["constraint"], 
+                    map(operator.not_, indicator_value) # type:ignore
+                )  
             )
 
             warning_str = f"Constraint not meet!! \n{fail_cons}"

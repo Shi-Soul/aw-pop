@@ -9,7 +9,7 @@ import threading
 from PIL import Image, ImageDraw
 import pystray
 import os
-from toolz.curried import curry, reduceby, valmap , map,juxt
+from toolz.curried import curry, reduceby, valmap, map, juxt
 from itertools import compress
 from aw_core import Event
 from aw_transform import flood
@@ -18,7 +18,7 @@ from fn import F
 import operator
 import win32gui
 import win32api
-import aw_client 
+import aw_client
 from aw_client import queries
 import socket
 from datetime import datetime, timedelta
@@ -26,29 +26,34 @@ from datetime import datetime, timedelta
 from treetype import TreeType
 
 
-
 def read_config(file_path):
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, "r") as file:
             return json.load(file)
     except Exception as e:
         logging.error(f"Error reading config file: {e}")
         sys.exit(1)
 
-class Monitor:
-    def __init__(self, config_path='config.json'):
-        if not os.path.exists('logs'): os.makedirs('logs')
-        logging.basicConfig(filename=f'logs/monitor_{datetime.now().strftime("%Y-%m-%d-%H")}.log', level=logging.INFO, 
-                            format='%(asctime)s - %(levelname)s - %(message)s')
-        self.config = read_config(config_path)
-        
-        self.aw = aw_client.ActivityWatchClient()
-        self.catconfig = list(map(lambda x: (x["name"], x["rule"]),self.aw.get_setting("classes"))) #type:ignore
 
-        
-        self.icon:pystray.Icon
+class Monitor:
+    def __init__(self, config_path="config.json"):
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
+        logging.basicConfig(
+            filename=f'logs/monitor_{datetime.now().strftime("%Y-%m-%d-%H")}.log',
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+        )
+        self.config = read_config(config_path)
+
+        self.aw = aw_client.ActivityWatchClient()
+        self.catconfig = list(
+            map(lambda x: (x["name"], x["rule"]), self.aw.get_setting("classes"))
+        )  # type:ignore
+
+        self.icon: pystray.Icon
         self.setup_icontray()
-        
+
         threading.Thread(target=self.setup_tk, daemon=True).start()
 
     def run(self):
@@ -58,45 +63,44 @@ class Monitor:
         # thread = threading.Thread(target=self.icon.run, daemon=True)
         # thread.start()
         # self.loop()
-        
+
     # Icon Tray
-    
+
     def setup_tk(self):
         self.tkroot = tk.Tk()
         self.tkroot.withdraw()
         self.tkroot.mainloop()
 
     def setup_icontray(self):
-        
+
         # read from a .ico file
         image = Image.open(r"icon6.ico")
         dc = ImageDraw.Draw(image)
-        dc.ellipse((0, 0, 64, 64), fill = (80, 240, 80))
-        menu = pystray.Menu(
-            pystray.MenuItem("Exit", self.exit_action)
-        )
+        dc.ellipse((0, 0, 64, 64), fill=(80, 240, 80))
+        menu = pystray.Menu(pystray.MenuItem("Exit", self.exit_action))
         self.icon = pystray.Icon("monitor", image, "aw-pop Monitor Program", menu)
-        
+
     def exit_action(self):
         self.icon.stop()
         sys.exit(0)
 
     # Call ActivityWatch
-    
-    def query_events(self,interval:int):
+
+    def query_events(self, interval: int):
         hostname = socket.gethostname()
-        
+
         query_body = queries.canonicalEvents(
             queries.DesktopQueryParams(
                 bid_window=f"aw-watcher-window_{hostname}",
                 bid_afk=f"aw-watcher-afk_{hostname}",
-                bid_browsers=[f"aw-watcher-web-edge",],
+                bid_browsers=[
+                    f"aw-watcher-web-edge",
+                ],
                 classes=self.catconfig,
             )
         )
-        reseq_query = list(map(lambda x:x.replace(' ',''),query_body.split(';')))
-        reseq_query.insert(-3,
-                    "events = union_no_overlap(browser_events,events)")
+        reseq_query = list(map(lambda x: x.replace(" ", ""), query_body.split(";")))
+        reseq_query.insert(-3, "events = union_no_overlap(browser_events,events)")
         query_body = ";\n".join(reseq_query)
 
         query = f"""
@@ -106,96 +110,99 @@ class Monitor:
         """
 
         now = datetime.now().astimezone()
-        
+
         timeperiods = [(now - timedelta(minutes=interval), now)]
-        
+
         return self.aw.query(query, timeperiods)[0]
-    
-    def cat_ratio(self,interval:int):
+
+    def cat_ratio(self, interval: int):
         res = self.query_events(interval)
-        dur = res['duration']
-        events = res['events']
-        
+        dur = res["duration"]
+        events = res["events"]
+
         # logging.info(f"DEBUG: {events[:5]=}")
-        cats = ( F()
-            << reduceby(lambda x: x['data']['$category'].__repr__(), 
-                lambda acc,x: acc+x['duration'].total_seconds(), 
-                init=0
-                )
+        cats = (
+            F()
+            << reduceby(
+                lambda x: x["data"]["$category"].__repr__(),
+                lambda acc, x: acc + x["duration"].total_seconds(),
+                init=0,
+            )
             << curry(flood)(pulsetime=0)
             << map(lambda x: Event(**x))
-            ) (events) 
-        
-        catratio:dict[str,float] = valmap(lambda x: x/dur, cats) #type:ignore
-        
-        return dur, TreeType.tree_expand(catratio)
+        )(events)
 
+        catratio: dict[str, float] = valmap(lambda x: x / dur, cats)  # type:ignore
+
+        return dur, TreeType.tree_expand(catratio)
 
     # Check Indicator
 
-    def _check_cons(self,cons,tree):
-        return getattr(operator,cons['op']) (tree.get_term(cons['term']).sum(),cons['value'])
-    
-    def _check_conses(self,cons, tree):
-        return list(juxt(map(curry(self._check_cons),cons))(tree)) #type:ignore
-    
-    
+    def _check_cons(self, cons, tree):
+        return getattr(operator, cons["op"])(
+            tree.get_term(cons["term"]).sum(), cons["value"]
+        )
+
+    def _check_conses(self, cons, tree):
+        return list(juxt(map(curry(self._check_cons), cons))(tree))  # type:ignore
+
     def _minimize_desktop(self):
         import win32com.client
+
         shell = win32com.client.Dispatch("Shell.Application")
         shell.MinimizeAll()
 
     def _show_popup(self, message):
         def show():
             messagebox.showwarning("Warning", message)
-        
-        self.tkroot.after(0,show)
+
+        self.tkroot.after(0, show)
 
     def loop(self):
         # haspop=False
         while True:
-            time.sleep(self.config['check_interval'])
-            
-            mon_ret = self.cat_ratio(self.config['monitor_interval'])
-            
+            time.sleep(self.config["check_interval"])
+
+            mon_ret = self.cat_ratio(self.config["monitor_interval"])
+
             if mon_ret is None:
                 logging.warning("Failed to get indicator value")
                 continue
-            
+
             dur, catratio = mon_ret
-            indicator_value = self._check_conses(self.config['constraint'],catratio)
-            
+            indicator_value = self._check_conses(self.config["constraint"], catratio)
+
             logging.info(f"Current Status: \n{mon_ret} \n{indicator_value}")
             if all(indicator_value):
                 continue
-            
-            
+
             # check if the constraint is still not met in the local time period
-            
-            loc_tree = self.cat_ratio(self.config['check_interval']/60)[1]
-            
-            loc_satisfy = self._check_conses(self.config['constraint'],loc_tree)
-            
+
+            loc_tree = self.cat_ratio(self.config["check_interval"] / 60)[1]
+
+            loc_satisfy = self._check_conses(self.config["constraint"], loc_tree)
+
             # If in a small local time period, the time allocation is satisfiable, then we regard it as a false alarm
             if loc_tree.isempty() or all(loc_satisfy):
                 continue
-            
+
             fail_cons = list(
-                compress(self.config['constraint'],
-                            map(operator.not_,indicator_value)) #type:ignore
-                )
-            
+                compress(
+                    self.config["constraint"], map(operator.not_, indicator_value)
+                )  # type:ignore
+            )
+
             warning_str = f"Constraint not meet!! \n{fail_cons}"
-            
+
             self._minimize_desktop()
             self._show_popup(warning_str)
             logging.warning(warning_str)
-            
 
 
 def main():
     monitor = Monitor()
     monitor.run()
+
 
 if __name__ == "__main__":
     main()

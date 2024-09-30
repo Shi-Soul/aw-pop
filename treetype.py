@@ -1,5 +1,5 @@
-from typing import Callable, Iterable
-from toolz.curried import reduce
+from typing import Callable, Iterable, Any
+from toolz.curried import reduce, valmap
 
 
 class TreeType(dict):
@@ -12,6 +12,20 @@ class TreeType(dict):
 
     @classmethod
     def tree_expand(cls, tree: dict) -> "TreeType":
+        """
+        Given a path-value pairs, construct a tree.
+        For example, the input
+        {"['a','b']": 1, "['a']": 2, "['a','c']": 3, "['d']": 4}
+        will be expanded into
+        {
+            'a': {
+                '__root__': 2,
+                'b': 1,
+                'c': 3
+            },
+            'd': 4
+        }
+        """
         expanded_tree = cls()
         for key, value in tree.items():
             path = eval(key)
@@ -30,8 +44,8 @@ class TreeType(dict):
                 carry[path[-1]] = value
         return expanded_tree
 
-    def get_term(self, term)->"TreeType":
-        return reduce(lambda acc, y: acc[y], term, self) # type: ignore
+    def get_term(self, term) -> "TreeType":
+        return reduce(lambda acc, y: acc[y], term, self)  # type: ignore
 
     def reduce(self, f, init):
         if not isinstance(self, TreeType):
@@ -43,6 +57,14 @@ class TreeType(dict):
     def sum(self) -> int:
         return self.reduce(lambda x, y: x + y, 0)
 
+    def map(self, f: Callable[[int], Any]) -> "TreeType":
+        return TreeType(
+            **valmap(  # type:ignore
+                lambda x: f(x) if not isinstance(x, TreeType) else x.map(f), 
+                self
+            )
+        )
+
     def isempty(self) -> bool:
         return not any(self.values())
 
@@ -52,10 +74,11 @@ if __name__ == "__main__":
         {"['ab','bb']": 1, "['ab']": 2, "['ab','c']": 3, "['d']": 4}
     )
     print(t)
-    print(t["ab"])
-    print(t["d"])
-    print(t.sum())
-    print(t["ab"].sum())
-    print(t.isempty())
-    print(t["ab"]["e"])
-    print(t["ab"]["e"].isempty())
+    print(t.map(lambda x: x * 10))
+    # print(t["ab"])
+    # print(t["d"])
+    # print(t.sum())
+    # print(t["ab"].sum())
+    # print(t.isempty())
+    # print(t["ab"]["e"])
+    # print(t["ab"]["e"].isempty())

@@ -128,7 +128,7 @@ class Monitor:
         dur = res["duration"]
         events = res["events"]
 
-        # logging.info(f"DEBUG: {events[:5]=}")
+        logging.info(f"DEBUG: events[:5]=\n{pprint.pformat(events[:5])}")
         cats = (
             F()
             << reduceby(
@@ -180,7 +180,12 @@ class Monitor:
             dur, catratio = mon_ret
             indicator_value = self._check_conses(self.config["constraint"], catratio)
 
-            logging.info(f"Current Status: \n{mon_ret} \n{indicator_value}")
+            logging.info(
+                f"Current Status: \n"
+                f"duration={dur}\n"
+                f"catratio=\n{pprint.pformat(catratio.map(curry(round)(ndigits=3)))}\n"
+                f"indicators={indicator_value}"
+            )
             if all(indicator_value):
                 continue
 
@@ -210,8 +215,9 @@ class Monitor:
             )
 
             warning_str = (
-                f"Constraint not meet!! \nFail Conses: {fail_cons}\n"
-                + f"Fail Terms: {fail_term}"
+                f"Constraints not meet ! !\n"
+                + f"Fail Conses\t:  {pprint.pformat(fail_cons)}\n"
+                + f"Fail Terms\t:  {pprint.pformat(fail_term)}"
             )
 
             self._minimize_desktop()

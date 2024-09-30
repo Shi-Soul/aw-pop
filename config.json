@@ -1,24 +1,24 @@
 {
-    "monitor_interval": 100, 
+    "monitor_interval": 240, 
     "check_interval": 10, 
     "constraint":
     [
         {
             "term": ["Work"],
             "op": "ge",
-            "value": 0.7
+            "value": 0.8
         },
         
         {
             "term": ["Garbage"],
             "op": "le",
-            "value": 0.15
+            "value": 0.05
         },
         
         {
             "term": ["Explore"],
             "op": "le",
-            "value": 0.3
+            "value": 0.2
         }
     ]
 }

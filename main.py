@@ -19,12 +19,12 @@ import operator
 import win32gui
 import win32api
 import aw_client
-from aw_client import queries
 import socket
 from datetime import datetime, timedelta
 
 import pprint
 from treetype import TreeType
+from query import canonicalEvents, DesktopQueryParams
 
 
 def read_config(file_path):
@@ -92,8 +92,8 @@ class Monitor:
     def query_events(self, interval: int):
         hostname = socket.gethostname()
 
-        query_body = queries.canonicalEvents(
-            queries.DesktopQueryParams(
+        query_body = canonicalEvents(
+            DesktopQueryParams(
                 bid_window=f"aw-watcher-window_{hostname}",
                 bid_afk=f"aw-watcher-afk_{hostname}",
                 bid_browsers=[
@@ -102,14 +102,14 @@ class Monitor:
                 classes=self.catconfig,
             )
         )
-        reseq_query = list(
-            map(# type: ignore
-                lambda x: x.replace(" ", ""), 
-                query_body.split(";")
-                )
-        )  
-        reseq_query.insert(-3, "events = union_no_overlap(browser_events,events)")
-        query_body = ";\n".join(reseq_query)
+        # reseq_query = list(
+        #     map(# type: ignore
+        #         lambda x: x.replace(" ", ""), 
+        #         query_body.split(";")
+        #         )
+        # )  
+        # reseq_query.insert(-3, "events = union_no_overlap(browser_events,events)")
+        # query_body = ";\n".join(reseq_query)
 
         query = f"""
         {query_body}

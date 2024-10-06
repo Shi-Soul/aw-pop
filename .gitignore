@@ -2,7 +2,9 @@
 build
 dist
 logs
+*.log
+*debug*
 get_ratio.ipynb
 
+__pycache__
 *.pyc
-monitor.log

@@ -1,6 +1,6 @@
 {
     "monitor_interval": 240, 
-    "check_interval": 10, 
+    "check_interval": 20, 
     "constraint":
     [
         {

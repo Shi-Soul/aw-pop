@@ -16,9 +16,9 @@ def browserEvents(params: DesktopQueryParams) -> str:
 
     for browserName, bucketId in browsersWithBuckets(params.bid_browsers):
         browser_appnames_str = json.dumps(browser_appnames[browserName])
-        print(browser_appnames[browserName])
+        # print(browser_appnames[browserName])
         not_pat = f"^(?!.*({'|'.join(browser_appnames[browserName])})).*"
-        print(not_pat)
+        # print(not_pat)
         code += f"""
           events_{browserName} = flood(query_bucket("{bucketId}"));
           window_{browserName} = filter_keyvals(events, "app", {browser_appnames_str});

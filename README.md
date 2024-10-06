@@ -11,6 +11,12 @@ Currently only works on Windows.
 
 
 
+## TODO
+
+- afk-checking: If afk, don't pop. To reduce the standby power comsumption
+
+
+
 ## Usage
 Just change `config.json`, and run `main.py`. There will be a icon tray in the system tray, you can exit the program by right clicking the icon.
 

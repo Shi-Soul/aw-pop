@@ -9,11 +9,11 @@ import threading
 from PIL import Image, ImageDraw
 import pystray
 import os
-from toolz.curried import curry, reduceby, valmap, map, juxt
+from toolz.curried import curry, reduceby, reduce, valmap, map, juxt
 from itertools import compress
 from aw_core import Event
 from aw_transform import flood
-from typing import List
+from typing import List, Tuple
 from fn import F
 import operator
 import win32gui
@@ -25,6 +25,8 @@ from datetime import datetime, timedelta
 import pprint
 from treetype import TreeType
 from query import canonicalEvents, DesktopQueryParams
+
+DEBUG:bool = os.environ.get("DEBUG", 'False').lower()=="true"
 
 
 def read_config(file_path):
@@ -41,7 +43,7 @@ class Monitor:
         if not os.path.exists("logs"):
             os.makedirs("logs")
         logging.basicConfig(
-            filename=f'logs/monitor_{datetime.now().strftime("%Y-%m-%d-%H")}.log',
+            filename=f'logs/{"debug_" if DEBUG else ""}monitor_{datetime.now().strftime("%Y-%m-%d-%H")}.log',
             level=logging.INFO,
             format="%(asctime)s - %(levelname)s - %(message)s",
         )
@@ -70,7 +72,7 @@ class Monitor:
     # Icon Tray
 
     def setup_tk(self):
-        self.tkroot = tk.Tk()
+        self.tkroot = tk.Tk("aw-pop")
         self.tkroot.withdraw()
         self.tkroot.mainloop()
 
@@ -89,7 +91,7 @@ class Monitor:
 
     # Call ActivityWatch
 
-    def query_events(self, interval: int):
+    def query_events(self, now: datetime, interval: int):
         hostname = socket.gethostname()
 
         query_body = canonicalEvents(
@@ -117,19 +119,23 @@ class Monitor:
         RETURN = {{"events": events, "duration": duration}};
         """
 
-        now = datetime.now().astimezone()
 
         timeperiods = [(now - timedelta(minutes=interval), now)]
 
         return self.aw.query(query, timeperiods)[0]
 
-    def cat_ratio(self, interval: int):
-        res = self.query_events(interval)
-        dur = res["duration"]
+    def cat_ratio(self, now: datetime, interval: int, verbose: bool=False)-> Tuple[float, TreeType]:
+        res = self.query_events(now, interval)
+        # dur = res["duration"]
         events = res["events"]
-
-        logging.info(f"DEBUG: events[:5]=\n{pprint.pformat(events[:5])}")
-        cats = (
+        
+        if verbose:
+            events_str = f"DEBUG: events[:5]=\n{pprint.pformat(events[:5])}"
+            logging.info(events_str)
+            if DEBUG :
+                print(events_str)
+            
+        cats:dict[str,float] = (
             F()
             << reduceby(
                 lambda x: x["data"]["$category"].__repr__(),
@@ -139,8 +145,21 @@ class Monitor:
             << curry(flood)(pulsetime=0)
             << map(lambda x: Event(**x))
         )(events)
+        
+        if DEBUG and verbose:
+            pprint.pprint(cats)
+        
+        cats.pop("['Uncategorized']",None)
+        dur = sum(cats.values())
+        
+        if verbose:
+            cat_str = f"DEBUG: {dur=} \n{pprint.pformat(cats)}"
+            logging.info(cat_str)
+            if DEBUG :
+                print(cat_str)
 
-        catratio: dict[str, float] = valmap(lambda x: x / dur, cats)  # type:ignore
+        catratio: dict[str, float] = valmap(lambda x: x / dur, cats)   # type: ignore
+                # it may not divide by zero
 
         return dur, TreeType.tree_expand(catratio)
 
@@ -170,8 +189,9 @@ class Monitor:
         # haspop=False
         while True:
             time.sleep(self.config["check_interval"])
+            now = datetime.now().astimezone()
 
-            mon_ret = self.cat_ratio(self.config["monitor_interval"])
+            mon_ret = self.cat_ratio(now, self.config["monitor_interval"])
 
             if mon_ret is None:
                 logging.warning("Failed to get indicator value")
@@ -191,7 +211,7 @@ class Monitor:
 
             # check if the constraint is still not met in the local time period
 
-            loc_tree = self.cat_ratio(self.config["check_interval"] / 60)[1]
+            loc_tree = self.cat_ratio(now, self.config["check_interval"] / 60, DEBUG)[1]
 
             loc_satisfy = self._check_conses(self.config["constraint"], loc_tree)
 
@@ -216,8 +236,8 @@ class Monitor:
 
             warning_str = (
                 f"Constraints not meet ! !\n"
-                + f"Fail Conses\t:  {pprint.pformat(fail_cons)}\n"
-                + f"Fail Terms\t:  {pprint.pformat(fail_term)}"
+                + f"Fail Conses :  {pprint.pformat(fail_cons)}\n"
+                + f"Fail Terms  :  {pprint.pformat(fail_term)}"
             )
 
             self._minimize_desktop()
@@ -226,7 +246,7 @@ class Monitor:
 
 
 def main():
-    monitor = Monitor()
+    monitor = Monitor(config_path="config_debug.json" if DEBUG else "config.json")
     monitor.run()
 
 
